@@ -29,8 +29,8 @@ class Train:
         self.lr_G = args.lr_G
         self.lr_D = args.lr_D
 
-        self.wgt_l1 = args.wgt_l1
         self.wgt_gan = args.wgt_gan
+        self.wgt_disc = args.wgt_disc
 
         self.optim = args.optim
         self.beta1 = args.beta1
@@ -98,18 +98,20 @@ class Train:
             return netG, epoch
 
     def preprocess(self, data):
-        nomalize = Nomalize()
-        randflip = RandomFlip()
         rescale = Rescale((self.ny_load, self.nx_load))
-        randomcrop = RandomCrop((self.ny_in, self.nx_in))
+        randomcrop = RandomCrop((self.ny_out, self.nx_out))
+        normalize = Normalize()
+        randomflip = RandomFlip()
         totensor = ToTensor()
-        return totensor(randomcrop(rescale(randflip(nomalize(data)))))
-        # return  transforms.Compose([Nomalize(), RandomFlip(), Rescale(286), RandomCrop(256), ToTensor()])
+        # return totensor(randomcrop(rescale(randomflip(nomalize(data)))))
+        return totensor(normalize(rescale(data)))
+
 
     def deprocess(self, data):
         tonumpy = ToNumpy()
         denomalize = Denomalize()
         return denomalize(tonumpy(data))
+
 
     def train(self):
         mode = self.mode
@@ -120,13 +122,16 @@ class Train:
         lr_G = self.lr_G
         lr_D = self.lr_D
 
-        wgt_l1 = self.wgt_l1
         wgt_gan = self.wgt_gan
+        wgt_disc = self.wgt_disc
 
         batch_size = self.batch_size
         device = self.device
 
         gpu_ids = self.gpu_ids
+
+        ny_in = self.ny_in
+        nx_in = self.nx_in
 
         nch_in = self.nch_in
         nch_out = self.nch_out
@@ -138,32 +143,32 @@ class Train:
 
         ## setup dataset
         dir_data_train = os.path.join(self.dir_data, name_data, 'train')
-        dir_data_val = os.path.join(self.dir_data, name_data, 'val')
+        # dir_data_val = os.path.join(self.dir_data, name_data, 'val')
 
         log_dir_train = os.path.join(self.dir_log, self.scope, name_data, 'train')
-        log_dir_val = os.path.join(self.dir_log, self.scope, name_data, 'val')
+        # log_dir_val = os.path.join(self.dir_log, self.scope, name_data, 'val')
 
         dataset_train = Dataset(dir_data_train, direction=self.direction, data_type=self.data_type, transform=self.preprocess)
-        dataset_val = Dataset(dir_data_val, direction=self.direction, data_type=self.data_type, transform=transforms.Compose([Nomalize(), ToTensor()]))
+        # dataset_val = Dataset(dir_data_val, direction=self.direction, data_type=self.data_type, transform=transforms.Compose([Nomalize(), ToTensor()]))
 
         loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
-        loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=0)
+        # loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=0)
 
         num_train = len(dataset_train)
-        num_val = len(dataset_val)
+        # num_val = len(dataset_val)
 
         num_batch_train = int((num_train / batch_size) + ((num_train % batch_size) != 0))
-        num_batch_val = int((num_val / batch_size) + ((num_val % batch_size) != 0))
+        # num_batch_val = int((num_val / batch_size) + ((num_val % batch_size) != 0))
 
         ## setup network
-        netG = UNet(nch_in, nch_out, nch_ker, norm)
-        netD = Discriminator(2*nch_in, nch_ker, norm)
+        # netG = UNet(nch_in, nch_out, nch_ker, norm)
+        netG = DCGAN(nch_in, nch_out, nch_ker, norm)
+        netD = Discriminator(nch_out, nch_ker, norm)
 
         init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
         init_net(netD, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
 
         ## setup loss & optimization
-        fn_L1 = nn.L1Loss().to(device) # L1
         fn_GAN = nn.BCELoss().to(device)
 
         paramsG = netG.parameters()
@@ -190,15 +195,14 @@ class Train:
 
         ## setup tensorboard
         writer_train = SummaryWriter(log_dir=log_dir_train)
-        writer_val = SummaryWriter(log_dir=log_dir_val)
+        # writer_val = SummaryWriter(log_dir=log_dir_val)
 
         for epoch in range(st_epoch + 1, num_epoch + 1):
             ## training phase
             netG.train()
             netD.train()
 
-            gen_loss_l1_train = 0
-            gen_loss_gan_train = 0
+            gen_loss_train = 0
             disc_loss_real_train = 0
             disc_loss_fake_train = 0
 
@@ -206,149 +210,144 @@ class Train:
                 def should(freq):
                     return freq > 0 and (i % freq == 0 or i == num_batch_train)
 
-                input = data['dataA'].to(device)
-                label = data['dataB'].to(device)
+                # input = data['dataA'].to(device)
+                # label = data['dataB'].to(device)
+
+                label = data.to(device)
 
                 # forward netG
+                input = torch.randn(batch_size, nch_in, ny_in, nx_in).to(device)
                 output = netG(input)
 
                 # backward netD
-                fake = torch.cat([input, output], dim=1)
-                real = torch.cat([input, label], dim=1)
-
                 set_requires_grad(netD, True)
                 optimD.zero_grad()
 
-                pred_fake = netD(fake.detach())
-                pred_real = netD(real)
+                pred_real = netD(label)
+                pred_fake = netD(output.detach())
 
                 disc_loss_real = fn_GAN(pred_real, torch.ones_like(pred_real))
                 disc_loss_fake = fn_GAN(pred_fake, torch.zeros_like(pred_fake))
-                disc_loss = 0.5 * (disc_loss_real + disc_loss_fake)
+                disc_loss = wgt_disc * 0.5 * (disc_loss_real + disc_loss_fake)
 
                 disc_loss.backward()
                 optimD.step()
 
                 # backward netG
-                fake = torch.cat([input, output], dim=1)
-
                 set_requires_grad(netD, False)
                 optimG.zero_grad()
 
-                pred_fake = netD(fake)
+                pred_fake = netD(output)
 
-                gen_loss_gan = fn_GAN(pred_fake, torch.ones_like(pred_fake))
-                gen_loss_l1 = fn_L1(output, label)
-                gen_loss = (wgt_l1 * gen_loss_l1) + (wgt_gan * gen_loss_gan)
+                gen_loss = fn_GAN(pred_fake, torch.ones_like(pred_fake))
 
                 gen_loss.backward()
                 optimG.step()
 
                 # get losses
-                gen_loss_l1_train += gen_loss_l1.item()
-                gen_loss_gan_train += gen_loss_gan.item()
+                gen_loss_train += gen_loss.item()
                 disc_loss_fake_train += disc_loss_fake.item()
                 disc_loss_real_train += disc_loss_real.item()
 
                 print('TRAIN: EPOCH %d: BATCH %04d/%04d: '
-                      'GEN L1: %.4f GEN GAN: %.4f DISC FAKE: %.4f DISC REAL: %.4f'
-                      % (epoch, i, num_batch_train,
-                         gen_loss_l1_train / i, gen_loss_gan_train / i, disc_loss_fake_train / i, disc_loss_real_train / i))
+                      'GEN GAN: %.4f DISC FAKE: %.4f DISC REAL: %.4f' %
+                      (epoch, i, num_batch_train,
+                       gen_loss_train / i, disc_loss_fake_train / i, disc_loss_real_train / i))
 
                 if should(num_freq):
                     ## show output
-                    input = self.deprocess(input)
+                    # input = self.deprocess(input)
                     output = self.deprocess(output)
                     label = self.deprocess(label)
 
-                    writer_train.add_images('input', input, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
-                    writer_train.add_images('ouput', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
+                    # writer_train.add_images('input', input, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
+                    writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
                     writer_train.add_images('label', label, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
 
-                    ## show predict
-                    pred_fake = self.deprocess(pred_fake)
-                    pred_real = self.deprocess(pred_real)
+                    # ## show predict
+                    # pred_fake = self.deprocess(pred_fake)
+                    # pred_real = self.deprocess(pred_real)
+                    #
+                    # writer_train.add_images('pred_fake', pred_fake, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
+                    # writer_train.add_images('pred_real', pred_real, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
 
-                    writer_train.add_images('pred_fake', pred_fake, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
-                    writer_train.add_images('pred_real', pred_real, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
-
-            writer_train.add_scalar('gen_loss_L1', gen_loss_l1_train / num_batch_train, epoch)
-            writer_train.add_scalar('gen_loss_GAN', gen_loss_gan_train / num_batch_train, epoch)
+            # writer_train.add_scalar('gen_loss_L1', gen_loss_l1_train / num_batch_train, epoch)
+            writer_train.add_scalar('gen_loss', gen_loss_train / num_batch_train, epoch)
             writer_train.add_scalar('disc_loss_fake', disc_loss_fake_train / num_batch_train, epoch)
             writer_train.add_scalar('disc_loss_real', disc_loss_real_train / num_batch_train, epoch)
 
-            ## validation phase
-            with torch.no_grad():
-                netG.eval()
-                netD.eval()
-                # netG.train()
-                # netD.train()
-
-                gen_loss_l1_val = 0
-                gen_loss_gan_val = 0
-                disc_loss_real_val = 0
-                disc_loss_fake_val = 0
-
-                for i, data in enumerate(loader_val, 1):
-                    def should(freq):
-                        return freq > 0 and (i % freq == 0 or i == num_batch_val)
-
-                    input = data['dataA'].to(device)
-                    label = data['dataB'].to(device)
-
-                    output = netG(input)
-
-                    fake = torch.cat([input, output], dim=1)
-                    real = torch.cat([input, label], dim=1)
-
-                    pred_fake = netD(fake)
-                    pred_real = netD(real)
-
-                    disc_loss_real = fn_GAN(pred_real, torch.ones_like(pred_real))
-                    disc_loss_fake = fn_GAN(pred_fake, torch.zeros_like(pred_fake))
-                    disc_loss = 0.5 * (disc_loss_real + disc_loss_fake)
-
-                    gen_loss_gan = fn_GAN(pred_fake, torch.ones_like(pred_fake))
-                    gen_loss_l1 = fn_L1(output, label)
-                    gen_loss = (wgt_l1 * gen_loss_l1) + (wgt_gan * gen_loss_gan)
-
-                    gen_loss_l1_val += gen_loss_l1.item()
-                    gen_loss_gan_val += gen_loss_gan.item()
-                    disc_loss_real_val += disc_loss_real.item()
-                    disc_loss_fake_val += disc_loss_fake.item()
-
-                    print('VALID: EPOCH %d: BATCH %04d/%04d: '
-                          'GEN L1: %.4f GEN GAN: %.4f DISC FAKE: %.4f DISC REAL: %.4f'
-                          % (epoch, i, num_batch_val,
-                             gen_loss_l1_val / i, gen_loss_gan_val / i, disc_loss_fake_val / i, disc_loss_real_val / i))
-
-                    if should(num_freq):
-                        ## show output
-                        input = self.deprocess(input)
-                        output = self.deprocess(output)
-                        label = self.deprocess(label)
-
-                        writer_val.add_images('input', input, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-                        writer_val.add_images('ouput', output, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-                        writer_val.add_images('label', label, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-                        # add_figure(output, label, writer_val, epoch=epoch, ylabel='Density', xlabel='Radius', namescope='train/gen')
-
-                        ## show predict
-                        pred_fake = self.deprocess(pred_fake)
-                        pred_real = self.deprocess(pred_real)
-
-                        writer_val.add_images('pred_fake', pred_fake, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-                        writer_val.add_images('pred_real', pred_real, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-                        # add_figure(pred_fake, pred_real, writer_val, epoch=epoch, ylabel='Probability', xlabel='Radius', namescope='train/discrim')
-
-                writer_val.add_scalar('gen_loss_L1', gen_loss_l1_val / num_batch_val, epoch)
-                writer_val.add_scalar('gen_loss_GAN', gen_loss_gan_val / num_batch_val, epoch)
-                writer_val.add_scalar('disc_loss_fake', disc_loss_fake_val / num_batch_val, epoch)
-                writer_val.add_scalar('disc_loss_real', disc_loss_real_val / num_batch_val, epoch)
-
-            # update schduler
-            # schedG.step()
-            # schedD.step()
+            # ## validation phase
+            # with torch.no_grad():
+            #     netG.eval()
+            #     netD.eval()
+            #     # netG.train()
+            #     # netD.train()
+            #
+            #     gen_loss_l1_val = 0
+            #     gen_loss_gan_val = 0
+            #     disc_loss_real_val = 0
+            #     disc_loss_fake_val = 0
+            #
+            #     for i, data in enumerate(loader_val, 1):
+            #         def should(freq):
+            #             return freq > 0 and (i % freq == 0 or i == num_batch_val)
+            #
+            #         input = data['dataA'].to(device)
+            #         label = data['dataB'].to(device)
+            #
+            #         output = netG(input)
+            #
+            #         fake = torch.cat([input, output], dim=1)
+            #         real = torch.cat([input, label], dim=1)
+            #
+            #         pred_fake = netD(fake)
+            #         pred_real = netD(real)
+            #
+            #         disc_loss_real = fn_GAN(pred_real, torch.ones_like(pred_real))
+            #         disc_loss_fake = fn_GAN(pred_fake, torch.zeros_like(pred_fake))
+            #         disc_loss = 0.5 * (disc_loss_real + disc_loss_fake)
+            #
+            #         gen_loss_gan = fn_GAN(pred_fake, torch.ones_like(pred_fake))
+            #         gen_loss_l1 = fn_L1(output, label)
+            #         gen_loss = (wgt_l1 * gen_loss_l1) + (wgt_gan * gen_loss_gan)
+            #
+            #         gen_loss_l1_val += gen_loss_l1.item()
+            #         gen_loss_gan_val += gen_loss_gan.item()
+            #         disc_loss_real_val += disc_loss_real.item()
+            #         disc_loss_fake_val += disc_loss_fake.item()
+            #
+            #         print('VALID: EPOCH %d: BATCH %04d/%04d: '
+            #               'GEN L1: %.4f GEN GAN: %.4f DISC FAKE: %.4f DISC REAL: %.4f'
+            #               % (epoch, i, num_batch_val,
+            #                  gen_loss_l1_val / i, gen_loss_gan_val / i, disc_loss_fake_val / i, disc_loss_real_val / i))
+            #
+            #         if should(num_freq):
+            #             ## show output
+            #             input = self.deprocess(input)
+            #             output = self.deprocess(output)
+            #             label = self.deprocess(label)
+            #
+            #             writer_val.add_images('input', input, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+            #             writer_val.add_images('ouput', output, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+            #             writer_val.add_images('label', label, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+            #             # add_figure(output, label, writer_val, epoch=epoch, ylabel='Density', xlabel='Radius', namescope='train/gen')
+            #
+            #             ## show predict
+            #             pred_fake = self.deprocess(pred_fake)
+            #             pred_real = self.deprocess(pred_real)
+            #
+            #             writer_val.add_images('pred_fake', pred_fake, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+            #             writer_val.add_images('pred_real', pred_real, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+            #             # add_figure(pred_fake, pred_real, writer_val, epoch=epoch, ylabel='Probability', xlabel='Radius', namescope='train/discrim')
+            #
+            #     writer_val.add_scalar('gen_loss_L1', gen_loss_l1_val / num_batch_val, epoch)
+            #     writer_val.add_scalar('gen_loss_GAN', gen_loss_gan_val / num_batch_val, epoch)
+            #     writer_val.add_scalar('disc_loss_fake', disc_loss_fake_val / num_batch_val, epoch)
+            #     writer_val.add_scalar('disc_loss_real', disc_loss_real_val / num_batch_val, epoch)
+            #
+            # # update schduler
+            # # schedG.step()
+            # # schedD.step()
 
             ## save
             if (epoch % 10) == 0:
@@ -356,7 +355,7 @@ class Train:
                 # torch.save(net.state_dict(), 'Checkpoints/model_epoch_%d.pt' % epoch)
 
         writer_train.close()
-        writer_val.close()
+        # writer_val.close()
 
 
     def test(self, epoch=[]):
