@@ -36,8 +36,8 @@ class Dataset(torch.utils.data.Dataset):
         self.names = lst_data
 
     def __getitem__(self, index):
-        # data = plt.imread(os.path.join(self.data_dir, self.names[index])).astype(np.float32)
-        data = skimage.io.imread(os.path.join(self.data_dir, self.names[index]), as_gray=True)
+        data = plt.imread(os.path.join(self.data_dir, self.names[index]))[:, :, 1]
+        # data = skimage.io.imread(os.path.join(self.data_dir, self.names[index]), as_gray=True)
         # x = torch.load(os.path.join(self.data_dir, self.names[0][index]))
         # y = torch.load(os.path.join(self.data_dir, self.names[1][index]))
         # x = np.load(os.path.join(self.data_dir, self.names[0][index]))
@@ -105,7 +105,8 @@ class Normalize(object):
         # dataB = 2 * (dataB / 255) - 1
         # return {'dataA': dataA, 'dataB': dataB}
 
-        data = 2 * (data / 255) - 1
+        # data = 2 * (data / 255) - 1
+        data = 2 * (data) - 1
         return data
 
 class RandomFlip(object):
@@ -259,12 +260,10 @@ class ToNumpy(object):
         #
         # return data
 
-        data.to('cpu').detach().numpy()
-
         if data.ndim == 3:
-            data.transpose(1, 2, 0)
+            data = data.to('cpu').detach().numpy().transpose((1, 2, 0))
         elif data.ndim == 4:
-            data.transpose(0, 2, 3, 1)
+            data = data.to('cpu').detach().numpy().transpose((0, 2, 3, 1))
 
         return data
 
