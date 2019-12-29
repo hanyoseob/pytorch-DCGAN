@@ -1,22 +1,22 @@
+import os
 import numpy as np
 import torch
-import skimage
 from skimage import transform
 import matplotlib.pyplot as plt
-import os
-
+import torchvision.transforms as transforms
+import torchvision.datasets as dset
 
 class Dataset(torch.utils.data.Dataset):
     """
-    dataset of image files of the form 
+    dataset of image files of the form
        stuff<number>_trans.pt
        stuff<number>_density.pt
     """
 
-    def __init__(self, data_dir, direction='A2B', data_type='float32', index_slice=None, transform=None):
+    def __init__(self, data_dir, data_type='float32', nch=1, index_slice=None, transform=None):
         self.data_dir = data_dir
         self.transform = transform
-        self.direction = direction
+        self.nch = nch
         self.data_type = data_type
 
         lst_data = os.listdir(data_dir)
@@ -36,7 +36,7 @@ class Dataset(torch.utils.data.Dataset):
         self.names = lst_data
 
     def __getitem__(self, index):
-        data = plt.imread(os.path.join(self.data_dir, self.names[index]))[:, :, 1]
+        data = plt.imread(os.path.join(self.data_dir, self.names[index]))[:, :, :self.nch]
         # data = skimage.io.imread(os.path.join(self.data_dir, self.names[index]), as_gray=True)
         # x = torch.load(os.path.join(self.data_dir, self.names[0][index]))
         # y = torch.load(os.path.join(self.data_dir, self.names[1][index]))
@@ -44,9 +44,6 @@ class Dataset(torch.utils.data.Dataset):
         # y = np.load(os.path.join(self.data_dir, self.names[1][index]))
         # x = x.to(self.device)
         # y = y.to(self.device)
-
-        if data.ndim == 2:
-            data = np.expand_dims(data, axis=2)
 
         # sz = int(data.shape[0]/2)
         #

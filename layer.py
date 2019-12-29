@@ -75,13 +75,14 @@ class CNR1d(nn.Module):
 
 
 class CNR2d(nn.Module):
-    def __init__(self, nch_in, nch_out, kernel_size=4, stride=1, padding=1, norm='bnorm', relu=0.0, drop=[]):
+    def __init__(self, nch_in, nch_out, kernel_size=4, stride=1, padding=1, norm='bnorm', relu=0.0, drop=[], bias=[]):
         super().__init__()
 
-        if norm == 'bnorm':
-            bias = False
-        else:
-            bias = True
+        if bias != []:
+            if norm == 'bnorm':
+                bias = False
+            else:
+                bias = True
 
         layers = []
         layers += [Conv2d(nch_in, nch_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)]
@@ -102,13 +103,14 @@ class CNR2d(nn.Module):
 
 
 class DECNR2d(nn.Module):
-    def __init__(self, nch_in, nch_out, kernel_size=4, stride=1, padding=1, norm='bnorm', relu=0.0, drop=[]):
+    def __init__(self, nch_in, nch_out, kernel_size=4, stride=1, padding=1, norm='bnorm', relu=0.0, drop=[], bias=[]):
         super().__init__()
 
-        if norm == 'bnorm':
-            bias = False
-        else:
-            bias = True
+        if bias != []:
+            if norm == 'bnorm':
+                bias = False
+            else:
+                bias = True
 
         layers = []
         layers += [Deconv2d(nch_in, nch_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)]
@@ -173,9 +175,9 @@ class Deconv2d(nn.Module):
         super(Deconv2d, self).__init__()
         self.deconv = nn.ConvTranspose2d(nch_in, nch_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)
 
-        # layers = [nn.Upsample(scale_factor=2, mode='bilinear'),
+        # layers = [nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
         #           nn.ReflectionPad2d(1),
-        #           nn.Conv2d(nch_in , nch_out, kernel_size=3, stride=1, padding=0)]
+        #           nn.Conv2d(nch_in, nch_out, kernel_size=3, stride=1, padding=0)]
         #
         # self.deconv = nn.Sequential(*layers)
 

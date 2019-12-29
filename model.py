@@ -16,11 +16,11 @@ class DCGAN(nn.Module):
         self.nch_ker = nch_ker
         self.norm = norm
 
-        self.dec1 = DECNR2d(1 * self.nch_in,  8 * self.nch_ker, kernel_size=4, stride=1, padding=0, norm=self.norm, relu=0.0, drop=[])
-        self.dec2 = DECNR2d(8 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
-        self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
-        self.dec4 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
-        self.dec5 = DECNR2d(1 * self.nch_ker, 1 * self.nch_out, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
+        self.dec1 = DECNR2d(1 * self.nch_in,  8 * self.nch_ker, kernel_size=4, stride=1, padding=0, norm=self.norm, relu=0.0, drop=[], bias=False)
+        self.dec2 = DECNR2d(8 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[], bias=False)
+        self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[], bias=False)
+        self.dec4 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[], bias=False)
+        self.dec5 = Deconv2d(1 * self.nch_ker, 1 * self.nch_out,kernel_size=4, stride=2, padding=1,                                    bias=False)
 
     def forward(self, x):
 
@@ -179,11 +179,11 @@ class Discriminator(nn.Module):
         self.nch_ker = nch_ker
         self.norm = norm
 
-        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[], relu=0.2, drop=[])
-        self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
-        self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
-        self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
-        self.dsc5 = Conv2d(8 * self.nch_ker, 1,               kernel_size=4, stride=1, padding=0)
+        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[],        relu=0.2, drop=[], bias=False)
+        self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[], bias=False)
+        self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[], bias=False)
+        self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[], bias=False)
+        self.dsc5 = Conv2d(8 * self.nch_ker, 1,               kernel_size=4, stride=1, padding=0,                                    bias=False)
 
     def forward(self, x):
 

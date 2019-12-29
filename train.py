@@ -1,3 +1,4 @@
+import os
 from model import *
 from dataset import *
 
@@ -55,7 +56,6 @@ class Train:
         self.gpu_ids = args.gpu_ids
         self.num_freq = args.num_freq
 
-        self.direction = args.direction
         self.name_data = args.name_data
 
         if self.gpu_ids and torch.cuda.is_available():
@@ -105,7 +105,15 @@ class Train:
         totensor = ToTensor()
         # return totensor(randomcrop(rescale(randomflip(nomalize(data)))))
         return totensor(normalize(rescale(data)))
-
+    
+    # def preprocess(self):
+    #     transform = transforms.Compose([
+    #         transforms.Resize((self.ny_out, self.nx_out)),
+    #         transforms.CenterCrop((self.ny_out, self.nx_out)),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize((0.5, 0.5, 0.5),
+    #                              (0.5, 0.5, 0.5))])
+    #     return transform
 
     def deprocess(self, data):
         tonumpy = ToNumpy()
@@ -142,16 +150,19 @@ class Train:
         name_data = self.name_data
 
         ## setup dataset
-        dir_data_train = os.path.join(self.dir_data, name_data, 'train')
+        dir_data_train = os.path.join(self.dir_data, name_data)
+        # dir_data_train = os.path.join(self.dir_data, name_data, 'train')
         # dir_data_val = os.path.join(self.dir_data, name_data, 'val')
 
-        log_dir_train = os.path.join(self.dir_log, self.scope, name_data, 'train')
+        log_dir_train = os.path.join(self.dir_log, self.scope, name_data)
+        # log_dir_train = os.path.join(self.dir_log, self.scope, name_data, 'train')
         # log_dir_val = os.path.join(self.dir_log, self.scope, name_data, 'val')
 
-        dataset_train = Dataset(dir_data_train, direction=self.direction, data_type=self.data_type, transform=self.preprocess)
+        dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_out, transform=self.preprocess)
+        # dataset_train = Dataset(dir_data_train, direction=self.direction, data_type=self.data_type, transform=self.preprocess)
         # dataset_val = Dataset(dir_data_val, direction=self.direction, data_type=self.data_type, transform=transforms.Compose([Nomalize(), ToTensor()]))
 
-        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
+        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8)
         # loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=0)
 
         num_train = len(dataset_train)
@@ -381,7 +392,8 @@ class Train:
 
         dir_data_test = os.path.join(self.dir_data, name_data, 'test')
 
-        dataset_test = Dataset(dir_data_test, direction=self.direction, data_type=self.data_type, transform=transforms.Compose([Nomalize(), ToTensor()]))
+        # dataset_test = Dataset(dir_data_test, direction=self.direction, data_type=self.data_type, transform=transforms.Compose([Nomalize(), ToTensor()]))
+        dataset_test = Dataset(dir_data_test, direction=self.direction, data_type=self.data_type, transform=[])
 
         loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=0)
 
