@@ -19,6 +19,9 @@ class Dataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         data = plt.imread(os.path.join(self.data_dir, self.names[index]))[:, :, :self.nch]
 
+        if data.dtype == np.uint8:
+            data = data / 255.0
+
         if self.transform:
             data = self.transform(data)
 
@@ -33,10 +36,12 @@ class ToTensor(object):
         data = data.transpose((2, 0, 1)).astype(np.float32)
         return torch.from_numpy(data)
 
+
 class Normalize(object):
     def __call__(self, data):
         data = 2 * data - 1
         return data
+
 
 class RandomFlip(object):
     def __call__(self, data):

@@ -24,7 +24,7 @@ class DCGAN(nn.Module):
         self.dec4 = DECNR2d(8 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
         self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
         self.dec2 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
-        self.dec1 = Deconv2d(1 * self.nch_ker, 1 * self.nch_out,kernel_size=4, stride=2, padding=1)
+        self.dec1 = Deconv2d(1 * self.nch_ker, 1 * self.nch_out,kernel_size=4, stride=2, padding=1, bias=False)
 
     def forward(self, x):
 
@@ -53,7 +53,7 @@ class UNet(nn.Module):
         else:
             self.bias = True
 
-        self.enc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, stride=2, norm=[],        relu=0.2, drop=[])
+        self.enc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, stride=2, norm=[],        relu=0.2, drop=[], bias=False)
         self.enc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
         self.enc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
         self.enc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
@@ -69,7 +69,7 @@ class UNet(nn.Module):
         self.dec4 = DECNR2d(2 * 8 * self.nch_ker, 4 * self.nch_ker, stride=2, norm=self.norm, relu=0.0, drop=[])
         self.dec3 = DECNR2d(2 * 4 * self.nch_ker, 2 * self.nch_ker, stride=2, norm=self.norm, relu=0.0, drop=[])
         self.dec2 = DECNR2d(2 * 2 * self.nch_ker, 1 * self.nch_ker, stride=2, norm=self.norm, relu=0.0, drop=[])
-        self.dec1 = Deconv2d(2 * 1 * self.nch_ker, 1 * self.nch_out, stride=2)
+        self.dec1 = Deconv2d(2 * 1 * self.nch_ker, 1 * self.nch_out, stride=2, bias=False)
 
     def forward(self, x):
 
@@ -96,6 +96,7 @@ class UNet(nn.Module):
         return x
 
 
+
 class ResNet(nn.Module):
     def __init__(self, nch_in, nch_out, nch_ker=64, norm='bnorm'):
         super(ResNet, self).__init__()
@@ -114,11 +115,9 @@ class ResNet(nn.Module):
                 CNR2d(self.nch_in, 1 * self.nch_ker, kernel_size=7, stride=1, padding=0, norm=[], relu=0.0)]
         self.enc1 = nn.Sequential(*enc1)
 
-        enc2 = [CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)]
-        self.enc2 = nn.Sequential(*enc2)
+        self.enc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)
 
-        enc3 = [CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)]
-        self.enc3 = nn.Sequential(*enc3)
+        self.enc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)
 
         self. res1 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
                               stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
@@ -147,11 +146,9 @@ class ResNet(nn.Module):
         self. res9 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
                               stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
 
-        dec3 = [DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)]
-        self.dec3 = nn.Sequential(*dec3)
+        self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)
 
-        dec2 = [DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)]
-        self.dec2 = nn.Sequential(*dec2)
+        self.dec2 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)
 
         dec1 = [Padding(3, 'reflection'),
                 Conv2d(1 * self.nch_ker, self.nch_out, kernel_size=7, stride=1, padding=0)]
@@ -161,6 +158,16 @@ class ResNet(nn.Module):
         x = self.enc1(x)
         x = self.enc2(x)
         x = self.enc3(x)
+
+        x = self.res1(x)
+        x = self.res2(x)
+        x = self.res3(x)
+        x = self.res4(x)
+        x = self.res5(x)
+        x = self.res6(x)
+        x = self.res7(x)
+        x = self.res8(x)
+        x = self.res8(x)
 
         x = self.dec3(x)
         x = self.dec2(x)
@@ -184,11 +191,11 @@ class Discriminator(nn.Module):
         else:
             self.bias = True
 
-        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[],        relu=0.2, drop=[])
+        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[],        relu=0.2, drop=[], bias=False)
         self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
         self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
         self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
-        self.dsc5 = Conv2d(8 * self.nch_ker, 1,               kernel_size=4, stride=1, padding=0)
+        self.dsc5 = Conv2d(8 * self.nch_ker, 1,               kernel_size=4, stride=1, padding=0, bias=False)
 
     def forward(self, x):
 

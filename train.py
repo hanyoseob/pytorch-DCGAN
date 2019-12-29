@@ -4,6 +4,7 @@ from dataset import *
 import torch
 import torch.nn as nn
 
+from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
@@ -145,7 +146,10 @@ class Train:
         dir_data_train = os.path.join(self.dir_data, name_data)
         dir_log = os.path.join(self.dir_log, self.scope, name_data)
 
-        dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_out, transform=self.preprocess)
+        transform_train = transforms.Compose([Normalize(), Rescale((self.ny_load, self.nx_load)), ToTensor()])
+        transform_inv = transforms.Compose([ToNumpy(), Denomalize()])
+
+        dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_out, transform=transform_train)
 
         loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8)
 
@@ -240,8 +244,8 @@ class Train:
 
                 if should(num_freq_disp):
                     ## show output
-                    output = self.deprocess(output)
-                    label = self.deprocess(label)
+                    output = transform_inv(output)
+                    label = transform_inv(label)
 
                     writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
                     writer_train.add_images('label', label, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
@@ -286,6 +290,8 @@ class Train:
         if not os.path.exists(dir_result_save):
             os.makedirs(dir_result_save)
 
+        transform_inv = transforms.Compose([ToNumpy(), Denomalize()])
+
         ## setup network
         netG = DCGAN(nch_in, nch_out, nch_ker, norm)
         init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
@@ -304,7 +310,7 @@ class Train:
 
             output = netG(input)
 
-            output = self.deprocess(output)
+            output = transform_inv(output)
 
             for j in range(output.shape[0]):
                 name = j
