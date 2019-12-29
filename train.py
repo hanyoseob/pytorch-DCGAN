@@ -51,7 +51,9 @@ class Train:
         self.norm = args.norm
 
         self.gpu_ids = args.gpu_ids
-        self.num_freq = args.num_freq
+
+        self.num_freq_disp = args.num_freq_disp
+        self.num_freq_save = args.num_freq_save
 
         self.name_data = args.name_data
 
@@ -124,21 +126,24 @@ class Train:
 
         gpu_ids = self.gpu_ids
 
-        ny_in = self.ny_in
-        nx_in = self.nx_in
-
         nch_in = self.nch_in
         nch_out = self.nch_out
         nch_ker = self.nch_ker
 
-        num_freq = self.num_freq
         norm = self.norm
         name_data = self.name_data
 
+        num_freq_disp = self.num_freq_disp
+        num_freq_save = self.num_freq_save
+
+        ny_in = self.ny_in
+        nx_in = self.nx_in
+
         ## setup dataset
+        dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
+
         dir_data_train = os.path.join(self.dir_data, name_data)
         dir_log = os.path.join(self.dir_log, self.scope, name_data)
-        dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
 
         dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_out, transform=self.preprocess)
 
@@ -192,10 +197,10 @@ class Train:
                 def should(freq):
                     return freq > 0 and (i % freq == 0 or i == num_batch_train)
 
+                input = torch.randn(batch_size, nch_in, ny_in, nx_in).to(device)
                 label = data.to(device)
 
                 # forward netG
-                input = torch.randn(batch_size, nch_in, ny_in, nx_in).to(device)
                 output = netG(input)
 
                 # backward netD
@@ -233,7 +238,7 @@ class Train:
                       (epoch, i, num_batch_train,
                        gen_loss_train / i, disc_loss_fake_train / i, disc_loss_real_train / i))
 
-                if should(num_freq):
+                if should(num_freq_disp):
                     ## show output
                     output = self.deprocess(output)
                     label = self.deprocess(label)
@@ -245,13 +250,15 @@ class Train:
             writer_train.add_scalar('disc_loss_fake', disc_loss_fake_train / num_batch_train, epoch)
             writer_train.add_scalar('disc_loss_real', disc_loss_real_train / num_batch_train, epoch)
 
+            # update schduler
+            # schedG.step()
+            # schedD.step()
+
             ## save
-            if (epoch % 5) == 0:
+            if (epoch % num_freq_save) == 0:
                 self.save(dir_chck, netG, netD, optimG, optimD, epoch)
 
         writer_train.close()
-        # writer_val.close()
-
 
     def test(self):
         mode = self.mode
@@ -273,6 +280,7 @@ class Train:
 
         ## setup dataset
         dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
+
         dir_result = os.path.join(self.dir_result, self.scope, name_data)
         dir_result_save = os.path.join(dir_result, 'images')
         if not os.path.exists(dir_result_save):
@@ -309,8 +317,6 @@ class Train:
                     plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j, :, :, :].squeeze(), cmap=cm.gray)
 
                 append_index(dir_result, fileset)
-
-
 
 
 def set_requires_grad(nets, requires_grad=False):

@@ -15,19 +15,24 @@ class DCGAN(nn.Module):
         self.nch_ker = nch_ker
         self.norm = norm
 
-        self.dec1 = DECNR2d(1 * self.nch_in,  8 * self.nch_ker, kernel_size=4, stride=1, padding=0, norm=self.norm, relu=0.0, drop=[], bias=False)
-        self.dec2 = DECNR2d(8 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[], bias=False)
-        self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[], bias=False)
-        self.dec4 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[], bias=False)
-        self.dec5 = Deconv2d(1 * self.nch_ker, 1 * self.nch_out,kernel_size=4, stride=2, padding=1,                                    bias=False)
+        if norm == 'bnorm':
+            self.bias = False
+        else:
+            self.bias = True
+
+        self.dec5 = DECNR2d(1 * self.nch_in,  8 * self.nch_ker, kernel_size=4, stride=1, padding=0, norm=self.norm, relu=0.0, drop=[])
+        self.dec4 = DECNR2d(8 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
+        self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
+        self.dec2 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0, drop=[])
+        self.dec1 = Deconv2d(1 * self.nch_ker, 1 * self.nch_out,kernel_size=4, stride=2, padding=1)
 
     def forward(self, x):
 
-        x = self.dec1(x)
-        x = self.dec2(x)
-        x = self.dec3(x)
-        x = self.dec4(x)
         x = self.dec5(x)
+        x = self.dec4(x)
+        x = self.dec3(x)
+        x = self.dec2(x)
+        x = self.dec1(x)
 
         x = torch.tanh(x)
 
@@ -42,6 +47,11 @@ class UNet(nn.Module):
         self.nch_out = nch_out
         self.nch_ker = nch_ker
         self.norm = norm
+
+        if norm == 'bnorm':
+            self.bias = False
+        else:
+            self.bias = True
 
         self.enc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, stride=2, norm=[],        relu=0.2, drop=[])
         self.enc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
@@ -101,18 +111,13 @@ class ResNet(nn.Module):
             self.bias = True
 
         enc1 = [Padding(3, 'reflection'),
-                Conv2d(self.nch_in, self.nch_ker, kernel_size=7, stride=1, padding=0, bias=self.bias),
-                ReLU(0.0)]
+                CNR2d(self.nch_in, 1 * self.nch_ker, kernel_size=7, stride=1, padding=0, norm=[], relu=0.0)]
         self.enc1 = nn.Sequential(*enc1)
 
-        enc2 = [Conv2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, bias=self.bias),
-                Norm2d(2 * self.nch_ker, norm_mode=norm),
-                ReLU(0.0)]
+        enc2 = [CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)]
         self.enc2 = nn.Sequential(*enc2)
 
-        enc3 = [Conv2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=3, stride=2, padding=1, bias=self.bias),
-                Norm2d(4 * self.nch_ker, norm_mode=norm),
-                ReLU(0.0)]
+        enc3 = [CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)]
         self.enc3 = nn.Sequential(*enc3)
 
         self. res1 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
@@ -142,18 +147,14 @@ class ResNet(nn.Module):
         self. res9 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
                               stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
 
-        dec3 = [nn.ConvTranspose2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, bias=self.bias),
-                Norm2d(2 * self.nch_ker, norm_mode=norm),
-                ReLU(0.0)]
+        dec3 = [DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)]
         self.dec3 = nn.Sequential(*dec3)
 
-        dec2 = [nn.ConvTranspose2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, bias=self.bias),
-                Norm2d(1 * self.nch_ker, norm_mode=norm),
-                ReLU(0.0)]
+        dec2 = [DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)]
         self.dec2 = nn.Sequential(*dec2)
 
         dec1 = [Padding(3, 'reflection'),
-                Conv2d(1 * self.nch_ker, self.nch_out, kernel_size=7, stride=1, padding=0, bias=self.bias)]
+                Conv2d(1 * self.nch_ker, self.nch_out, kernel_size=7, stride=1, padding=0)]
         self.dec1 = nn.Sequential(*dec1)
 
     def forward(self, x):
@@ -178,11 +179,16 @@ class Discriminator(nn.Module):
         self.nch_ker = nch_ker
         self.norm = norm
 
-        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[],        relu=0.2, drop=[], bias=False)
-        self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[], bias=False)
-        self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[], bias=False)
-        self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[], bias=False)
-        self.dsc5 = Conv2d(8 * self.nch_ker, 1,               kernel_size=4, stride=1, padding=0,                                    bias=False)
+        if norm == 'bnorm':
+            self.bias = False
+        else:
+            self.bias = True
+
+        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[],        relu=0.2, drop=[])
+        self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
+        self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
+        self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
+        self.dsc5 = Conv2d(8 * self.nch_ker, 1,               kernel_size=4, stride=1, padding=0)
 
     def forward(self, x):
 

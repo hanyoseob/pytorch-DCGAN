@@ -34,7 +34,8 @@ parser.add_argument('--batch_size', type=int, default=128, dest='batch_size')
 parser.add_argument('--lr_G', type=float, default=2e-4, dest='lr_G')
 parser.add_argument('--lr_D', type=float, default=2e-4, dest='lr_D')
 
-parser.add_argument('--num_freq', type=int,  default=50, dest='num_freq')
+parser.add_argument('--num_freq_disp', type=int,  default=50, dest='num_freq_disp')
+parser.add_argument('--num_freq_save', type=int,  default=10, dest='num_freq_save')
 
 parser.add_argument('--lr_policy', type=str, default='linear', choices=['linear', 'step', 'plateau', 'cosine'], dest='lr_policy')
 parser.add_argument('--n_epochs', type=int, default=100, dest='n_epochs')
