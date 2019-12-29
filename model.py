@@ -2,7 +2,6 @@ from layer import *
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn import init
 from torch.optim import lr_scheduler
 
@@ -194,38 +193,6 @@ class Discriminator(nn.Module):
         x = self.dsc5(x)
 
         x = torch.sigmoid(x)
-
-        return x
-
-class AutoEncoder1d(nn.Module):
-    def __init__(self, nch_in, nch_out):
-        super(AutoEncoder1d, self).__init__()
-
-        # self.nch_in = args.nch_in
-        # self.nch_out = args.nch_out
-        self.nch_in = nch_in
-        self.nch_out = nch_out
-
-        self.efc1 = nn.Linear(self.nch_in, 400)
-        self.efc2 = nn.Linear(400, 200)
-        self.efc3 = nn.Linear(200, 100)
-        self.efc4 = nn.Linear(100, 50)
-
-        self.dfc4 = nn.Linear(50, 100)
-        self.dfc3 = nn.Linear(100, 200)
-        self.dfc2 = nn.Linear(200, 400)
-        self.dfc1 = nn.Linear(400, self.nch_out)
-
-    def forward(self, x):
-        x = F.relu(self.efc1(x))
-        x = F.relu(self.efc2(x))
-        x = F.relu(self.efc3(x))
-        x = F.relu(self.efc4(x))
-
-        x = F.relu(self.dfc4(x))
-        x = F.relu(self.dfc3(x))
-        x = F.relu(self.dfc2(x))
-        x = self.dfc1(x)
 
         return x
 

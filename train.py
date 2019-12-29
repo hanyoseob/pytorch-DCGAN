@@ -1,19 +1,16 @@
-import os
 from model import *
 from dataset import *
 
 import torch
 import torch.nn as nn
 
-from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import cm
 
 
 class Train:
     def __init__(self, args):
-        # self.opts = args
-
         self.mode = args.mode
         self.train_continue = args.train_continue
 
@@ -64,25 +61,23 @@ class Train:
         else:
             self.device = torch.device("cpu")
 
-    def save(self, netG, netD, optimG, optimD, epoch):
-        dir_checkpoint = os.path.join(self.dir_checkpoint, self.scope)
-
-        if not os.path.exists(dir_checkpoint):
-            os.makedirs(dir_checkpoint)
+    def save(self, dir_chck, netG, netD, optimG, optimD, epoch):
+        if not os.path.exists(dir_chck):
+            os.makedirs(dir_chck)
 
         torch.save({'netG': netG.state_dict(), 'netD': netD.state_dict(),
                     'optimG': optimG.state_dict(), 'optimD': optimD.state_dict()},
-                   '%s/model_epoch%04d.pth' % (dir_checkpoint, epoch))
+                   '%s/model_epoch%04d.pth' % (dir_chck, epoch))
 
-    def load(self, netG, netD=[], optimG=[], optimD=[], epoch=[], mode='train'):
-        dir_checkpoint = os.path.join(self.dir_checkpoint, self.scope)
-
+    def load(self, dir_chck, netG, netD=[], optimG=[], optimD=[], epoch=[], mode='train'):
         if not epoch:
-            ckpt = os.listdir(dir_checkpoint)
+            ckpt = os.listdir(dir_chck)
             ckpt.sort()
             epoch = int(ckpt[-1].split('epoch')[1].split('.pth')[0])
 
-        dict_net = torch.load('%s/model_epoch%04d.pth' % (dir_checkpoint, epoch))
+        dict_net = torch.load('%s/model_epoch%04d.pth' % (dir_chck, epoch))
+
+        print('Loaded %dth network' % epoch)
 
         if mode == 'train':
             netG.load_state_dict(dict_net['netG'])
@@ -105,15 +100,6 @@ class Train:
         totensor = ToTensor()
         # return totensor(randomcrop(rescale(randomflip(nomalize(data)))))
         return totensor(normalize(rescale(data)))
-    
-    # def preprocess(self):
-    #     transform = transforms.Compose([
-    #         transforms.Resize((self.ny_out, self.nx_out)),
-    #         transforms.CenterCrop((self.ny_out, self.nx_out)),
-    #         transforms.ToTensor(),
-    #         transforms.Normalize((0.5, 0.5, 0.5),
-    #                              (0.5, 0.5, 0.5))])
-    #     return transform
 
     def deprocess(self, data):
         tonumpy = ToNumpy()
@@ -151,28 +137,18 @@ class Train:
 
         ## setup dataset
         dir_data_train = os.path.join(self.dir_data, name_data)
-        # dir_data_train = os.path.join(self.dir_data, name_data, 'train')
-        # dir_data_val = os.path.join(self.dir_data, name_data, 'val')
-
-        log_dir_train = os.path.join(self.dir_log, self.scope, name_data)
-        # log_dir_train = os.path.join(self.dir_log, self.scope, name_data, 'train')
-        # log_dir_val = os.path.join(self.dir_log, self.scope, name_data, 'val')
+        dir_log = os.path.join(self.dir_log, self.scope, name_data)
+        dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
 
         dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_out, transform=self.preprocess)
-        # dataset_train = Dataset(dir_data_train, direction=self.direction, data_type=self.data_type, transform=self.preprocess)
-        # dataset_val = Dataset(dir_data_val, direction=self.direction, data_type=self.data_type, transform=transforms.Compose([Nomalize(), ToTensor()]))
 
         loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8)
-        # loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=0)
 
         num_train = len(dataset_train)
-        # num_val = len(dataset_val)
 
         num_batch_train = int((num_train / batch_size) + ((num_train % batch_size) != 0))
-        # num_batch_val = int((num_val / batch_size) + ((num_val % batch_size) != 0))
 
         ## setup network
-        # netG = UNet(nch_in, nch_out, nch_ker, norm)
         netG = DCGAN(nch_in, nch_out, nch_ker, norm)
         netD = Discriminator(nch_out, nch_ker, norm)
 
@@ -191,10 +167,6 @@ class Train:
         # schedG = get_scheduler(optimG, self.opts)
         # schedD = get_scheduler(optimD, self.opts)
 
-        # schedG = torch.optim.lr_scheduler.ReduceLROnPlateau(optimG, 'min', factor=0.5, patience=20, verbose=True)
-        # schedD = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        #     optimD, 'min', factor=0.5, patience=20, verbose=True)
-
         # schedG = torch.optim.lr_scheduler.ExponentialLR(optimG, gamma=0.9)
         # schedD = torch.optim.lr_scheduler.ExponentialLR(optimD, gamma=0.9)
 
@@ -202,11 +174,10 @@ class Train:
         st_epoch = 0
 
         if train_continue == 'on':
-            netG, netD, optimG, optimD, st_epoch = self.load(netG, netD, optimG, optimD, mode=mode)
+            netG, netD, optimG, optimD, st_epoch = self.load(dir_chck, netG, netD, optimG, optimD, mode=mode)
 
         ## setup tensorboard
-        writer_train = SummaryWriter(log_dir=log_dir_train)
-        # writer_val = SummaryWriter(log_dir=log_dir_val)
+        writer_train = SummaryWriter(log_dir=dir_log)
 
         for epoch in range(st_epoch + 1, num_epoch + 1):
             ## training phase
@@ -220,9 +191,6 @@ class Train:
             for i, data in enumerate(loader_train, 1):
                 def should(freq):
                     return freq > 0 and (i % freq == 0 or i == num_batch_train)
-
-                # input = data['dataA'].to(device)
-                # label = data['dataB'].to(device)
 
                 label = data.to(device)
 
@@ -239,7 +207,7 @@ class Train:
 
                 disc_loss_real = fn_GAN(pred_real, torch.ones_like(pred_real))
                 disc_loss_fake = fn_GAN(pred_fake, torch.zeros_like(pred_fake))
-                disc_loss = wgt_disc * 0.5 * (disc_loss_real + disc_loss_fake)
+                disc_loss = 0.5 * (disc_loss_real + disc_loss_fake)
 
                 disc_loss.backward()
                 optimD.step()
@@ -267,114 +235,33 @@ class Train:
 
                 if should(num_freq):
                     ## show output
-                    # input = self.deprocess(input)
                     output = self.deprocess(output)
                     label = self.deprocess(label)
 
-                    # writer_train.add_images('input', input, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
                     writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
                     writer_train.add_images('label', label, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
 
-                    # ## show predict
-                    # pred_fake = self.deprocess(pred_fake)
-                    # pred_real = self.deprocess(pred_real)
-                    #
-                    # writer_train.add_images('pred_fake', pred_fake, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
-                    # writer_train.add_images('pred_real', pred_real, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
-
-            # writer_train.add_scalar('gen_loss_L1', gen_loss_l1_train / num_batch_train, epoch)
             writer_train.add_scalar('gen_loss', gen_loss_train / num_batch_train, epoch)
             writer_train.add_scalar('disc_loss_fake', disc_loss_fake_train / num_batch_train, epoch)
             writer_train.add_scalar('disc_loss_real', disc_loss_real_train / num_batch_train, epoch)
 
-            # ## validation phase
-            # with torch.no_grad():
-            #     netG.eval()
-            #     netD.eval()
-            #     # netG.train()
-            #     # netD.train()
-            #
-            #     gen_loss_l1_val = 0
-            #     gen_loss_gan_val = 0
-            #     disc_loss_real_val = 0
-            #     disc_loss_fake_val = 0
-            #
-            #     for i, data in enumerate(loader_val, 1):
-            #         def should(freq):
-            #             return freq > 0 and (i % freq == 0 or i == num_batch_val)
-            #
-            #         input = data['dataA'].to(device)
-            #         label = data['dataB'].to(device)
-            #
-            #         output = netG(input)
-            #
-            #         fake = torch.cat([input, output], dim=1)
-            #         real = torch.cat([input, label], dim=1)
-            #
-            #         pred_fake = netD(fake)
-            #         pred_real = netD(real)
-            #
-            #         disc_loss_real = fn_GAN(pred_real, torch.ones_like(pred_real))
-            #         disc_loss_fake = fn_GAN(pred_fake, torch.zeros_like(pred_fake))
-            #         disc_loss = 0.5 * (disc_loss_real + disc_loss_fake)
-            #
-            #         gen_loss_gan = fn_GAN(pred_fake, torch.ones_like(pred_fake))
-            #         gen_loss_l1 = fn_L1(output, label)
-            #         gen_loss = (wgt_l1 * gen_loss_l1) + (wgt_gan * gen_loss_gan)
-            #
-            #         gen_loss_l1_val += gen_loss_l1.item()
-            #         gen_loss_gan_val += gen_loss_gan.item()
-            #         disc_loss_real_val += disc_loss_real.item()
-            #         disc_loss_fake_val += disc_loss_fake.item()
-            #
-            #         print('VALID: EPOCH %d: BATCH %04d/%04d: '
-            #               'GEN L1: %.4f GEN GAN: %.4f DISC FAKE: %.4f DISC REAL: %.4f'
-            #               % (epoch, i, num_batch_val,
-            #                  gen_loss_l1_val / i, gen_loss_gan_val / i, disc_loss_fake_val / i, disc_loss_real_val / i))
-            #
-            #         if should(num_freq):
-            #             ## show output
-            #             input = self.deprocess(input)
-            #             output = self.deprocess(output)
-            #             label = self.deprocess(label)
-            #
-            #             writer_val.add_images('input', input, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-            #             writer_val.add_images('ouput', output, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-            #             writer_val.add_images('label', label, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-            #             # add_figure(output, label, writer_val, epoch=epoch, ylabel='Density', xlabel='Radius', namescope='train/gen')
-            #
-            #             ## show predict
-            #             pred_fake = self.deprocess(pred_fake)
-            #             pred_real = self.deprocess(pred_real)
-            #
-            #             writer_val.add_images('pred_fake', pred_fake, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-            #             writer_val.add_images('pred_real', pred_real, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-            #             # add_figure(pred_fake, pred_real, writer_val, epoch=epoch, ylabel='Probability', xlabel='Radius', namescope='train/discrim')
-            #
-            #     writer_val.add_scalar('gen_loss_L1', gen_loss_l1_val / num_batch_val, epoch)
-            #     writer_val.add_scalar('gen_loss_GAN', gen_loss_gan_val / num_batch_val, epoch)
-            #     writer_val.add_scalar('disc_loss_fake', disc_loss_fake_val / num_batch_val, epoch)
-            #     writer_val.add_scalar('disc_loss_real', disc_loss_real_val / num_batch_val, epoch)
-            #
-            # # update schduler
-            # # schedG.step()
-            # # schedD.step()
-
             ## save
-            if (epoch % 10) == 0:
-                self.save(netG, netD, optimG, optimD, epoch)
-                # torch.save(net.state_dict(), 'Checkpoints/model_epoch_%d.pt' % epoch)
+            if (epoch % 5) == 0:
+                self.save(dir_chck, netG, netD, optimG, optimD, epoch)
 
         writer_train.close()
         # writer_val.close()
 
 
-    def test(self, epoch=[]):
+    def test(self):
         mode = self.mode
 
         batch_size = self.batch_size
         device = self.device
         gpu_ids = self.gpu_ids
+
+        ny_in = self.ny_in
+        nx_in = self.nx_in
 
         nch_in = self.nch_in
         nch_out = self.nch_out
@@ -385,71 +272,44 @@ class Train:
         name_data = self.name_data
 
         ## setup dataset
+        dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
         dir_result = os.path.join(self.dir_result, self.scope, name_data)
         dir_result_save = os.path.join(dir_result, 'images')
         if not os.path.exists(dir_result_save):
             os.makedirs(dir_result_save)
 
-        dir_data_test = os.path.join(self.dir_data, name_data, 'test')
-
-        # dataset_test = Dataset(dir_data_test, direction=self.direction, data_type=self.data_type, transform=transforms.Compose([Nomalize(), ToTensor()]))
-        dataset_test = Dataset(dir_data_test, direction=self.direction, data_type=self.data_type, transform=[])
-
-        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=0)
-
-        num_test = len(dataset_test)
-
-        num_batch_test = int((num_test / batch_size) + ((num_test % batch_size) != 0))
-
         ## setup network
-        netG = UNet(nch_in, nch_out, nch_ker, norm)
+        netG = DCGAN(nch_in, nch_out, nch_ker, norm)
         init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
-
-        ## setup loss & optimization
-        fn_L1 = nn.L1Loss().to(device)  # L1
 
         ## load from checkpoints
         st_epoch = 0
 
-        netG, st_epoch = self.load(netG, mode=mode)
+        netG, st_epoch = self.load(dir_chck, netG, mode=mode)
 
         ## test phase
         with torch.no_grad():
             netG.eval()
             # netG.train()
 
-            gen_loss_l1_test = 0
-            for i, data in enumerate(loader_test, 1):
-                input = data['dataA'].to(device)
-                label = data['dataB'].to(device)
+            input = torch.randn(batch_size, nch_in, ny_in, nx_in).to(device)
 
-                output = netG(input)
+            output = netG(input)
 
-                gen_loss_l1 = fn_L1(output, label)
-                gen_loss_l1_test += gen_loss_l1.item()
+            output = self.deprocess(output)
 
+            for j in range(output.shape[0]):
+                name = j
+                fileset = {'name': name,
+                            'output': "%04d-output.png" % name}
 
-                input = self.deprocess(input)
-                output = self.deprocess(output)
-                label = self.deprocess(label)
-
-                # np.save(os.path.join(dir_result, "output_%05d_1d.npy" % (i - 1)), np.float32(np.squeeze(output.detach().numpy())))
-
-                for j in range(label.shape[0]):
-                    name = batch_size * (i - 1) + j
-                    fileset = {'name': name,
-                                'input': "%04d-input.png" % name,
-                                'output': "%04d-output.png" % name,
-                                'label': "%04d-label.png" % name}
-
-                    plt.imsave(os.path.join(dir_result_save, fileset['input']), input[j, :, :, :].squeeze())
+                if nch_out == 3:
                     plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j, :, :, :].squeeze())
-                    plt.imsave(os.path.join(dir_result_save, fileset['label']), label[j, :, :, :].squeeze())
+                elif nch_out == 1:
+                    plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j, :, :, :].squeeze(), cmap=cm.gray)
 
-                    append_index(dir_result, fileset)
+                append_index(dir_result, fileset)
 
-                print('TEST: %d/%d: LOSS: %.6f' % (i, num_batch_test, gen_loss_l1.item()))
-            print('TEST: AVERAGE LOSS: %.6f' % (gen_loss_l1_test / num_batch_test))
 
 
 
@@ -505,7 +365,7 @@ def append_index(dir_result, fileset, step=False):
         index.write("<html><body><table><tr>")
         if step:
             index.write("<th>step</th>")
-        index.write("<th>name</th><th>input</th><th>output</th><th>target</th></tr>")
+        index.write("<th>name</th><th>output</th></tr>")
 
     # for fileset in filesets:
     index.write("<tr>")
@@ -514,7 +374,8 @@ def append_index(dir_result, fileset, step=False):
         index.write("<td>%d</td>" % fileset["step"])
     index.write("<td>%s</td>" % fileset["name"])
 
-    for kind in ["input", "output", "label"]:
+    # for kind in ["input", "output", "label"]:
+    for kind in ["output"]:
         index.write("<td><img src='images/%s'></td>" % fileset[kind])
 
     index.write("</tr>")

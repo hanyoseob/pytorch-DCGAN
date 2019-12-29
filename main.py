@@ -1,21 +1,13 @@
 import argparse
-
 import torch.backends.cudnn as cudnn
+
 from train import *
 from utils import *
-
-import random
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 cudnn.benchmark = True
 cudnn.fastest = True
-
-# # Set random seed for reproducibility.
-# seed = 369
-# random.seed(seed)
-# torch.manual_seed(seed)
-# print("Random Seed: ", seed)
 
 ## setup parse
 parser = argparse.ArgumentParser(description='Train the DCGAN network',
@@ -23,12 +15,12 @@ parser = argparse.ArgumentParser(description='Train the DCGAN network',
 
 parser.add_argument('--gpu_ids', default='0', dest='gpu_ids')
 
-parser.add_argument('--mode', default='train', choices=['train', 'test'], dest='mode')
+parser.add_argument('--mode', default='test', choices=['train', 'test'], dest='mode')
 parser.add_argument('--train_continue', default='off', choices=['on', 'off'], dest='train_continue')
 
 parser.add_argument('--scope', default='dcgan_bnorm', dest='scope')
 parser.add_argument('--norm', type=str, default='bnorm', dest='norm')
-parser.add_argument('--name_data', type=str, default='cifar10', dest='name_data')
+parser.add_argument('--name_data', type=str, default='celeba', dest='name_data')
 
 parser.add_argument('--dir_checkpoint', default='./checkpoints', dest='dir_checkpoint')
 parser.add_argument('--dir_log', default='./log', dest='dir_log')
@@ -36,7 +28,7 @@ parser.add_argument('--dir_log', default='./log', dest='dir_log')
 parser.add_argument('--dir_data', default='../datasets', dest='dir_data')
 parser.add_argument('--dir_result', default='./result', dest='dir_result')
 
-parser.add_argument('--num_epoch', type=int,  default=20, dest='num_epoch')
+parser.add_argument('--num_epoch', type=int,  default=10, dest='num_epoch')
 parser.add_argument('--batch_size', type=int, default=128, dest='batch_size')
 
 parser.add_argument('--lr_G', type=float, default=2e-4, dest='lr_G')
@@ -83,7 +75,7 @@ def main():
     if ARGS.mode == 'train':
         TRAINER.train()
     elif ARGS.mode == 'test':
-        TRAINER.test(epoch=[])
+        TRAINER.test()
 
 if __name__ == '__main__':
     main()
