@@ -215,11 +215,11 @@ class Train:
                 pred_real = netD(label)
                 pred_fake = netD(output.detach())
 
-                disc_loss_real = fn_GAN(pred_real, torch.ones_like(pred_real))
-                disc_loss_fake = fn_GAN(pred_fake, torch.zeros_like(pred_fake))
-                disc_loss = 0.5 * (disc_loss_real + disc_loss_fake)
+                loss_D_real = fn_GAN(pred_real, torch.ones_like(pred_real))
+                loss_D_fake = fn_GAN(pred_fake, torch.zeros_like(pred_fake))
+                loss_D = 0.5 * (loss_D_real + loss_D_fake)
 
-                disc_loss.backward()
+                loss_D.backward()
                 optimD.step()
 
                 # backward netG
@@ -228,15 +228,15 @@ class Train:
 
                 pred_fake = netD(output)
 
-                gen_loss = fn_GAN(pred_fake, torch.ones_like(pred_fake))
+                loss_G = fn_GAN(pred_fake, torch.ones_like(pred_fake))
 
-                gen_loss.backward()
+                loss_G.backward()
                 optimG.step()
 
                 # get losses
-                loss_G_train += [gen_loss.item()]
-                loss_D_fake_train += [disc_loss_fake.item()]
-                loss_D_real_train += [disc_loss_real.item()]
+                loss_G_train += [loss_G.item()]
+                loss_D_real_train += [loss_D_real.item()]
+                loss_D_fake_train += [loss_D_fake.item()]
 
                 print('TRAIN: EPOCH %d: BATCH %04d/%04d: '
                       'GEN GAN: %.4f DISC FAKE: %.4f DISC REAL: %.4f' %
