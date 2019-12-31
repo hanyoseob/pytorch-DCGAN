@@ -53,7 +53,7 @@ class UNet(nn.Module):
         else:
             self.bias = True
 
-        self.enc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, stride=2, norm=[],        relu=0.2, drop=[], bias=False)
+        self.enc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
         self.enc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
         self.enc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
         self.enc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, stride=2, norm=self.norm, relu=0.2, drop=[])
@@ -69,7 +69,7 @@ class UNet(nn.Module):
         self.dec4 = DECNR2d(2 * 8 * self.nch_ker, 4 * self.nch_ker, stride=2, norm=self.norm, relu=0.0, drop=[])
         self.dec3 = DECNR2d(2 * 4 * self.nch_ker, 2 * self.nch_ker, stride=2, norm=self.norm, relu=0.0, drop=[])
         self.dec2 = DECNR2d(2 * 2 * self.nch_ker, 1 * self.nch_ker, stride=2, norm=self.norm, relu=0.0, drop=[])
-        self.dec1 = Deconv2d(2 * 1 * self.nch_ker, 1 * self.nch_out, stride=2, bias=False)
+        self.dec1 = DECNR2d(2 * 1 * self.nch_ker, 1 * self.nch_out, stride=2, norm=[],        relu=[],  drop=[], bias=False)
 
     def forward(self, x):
 
@@ -96,78 +96,48 @@ class UNet(nn.Module):
         return x
 
 
-
 class ResNet(nn.Module):
-    def __init__(self, nch_in, nch_out, nch_ker=64, norm='bnorm'):
+    def __init__(self, nch_in, nch_out, nch_ker=64, norm='bnorm', nblk=6):
         super(ResNet, self).__init__()
 
         self.nch_in = nch_in
         self.nch_out = nch_out
         self.nch_ker = nch_ker
         self.norm = norm
+        self.nblk = nblk
 
         if norm == 'bnorm':
             self.bias = False
         else:
             self.bias = True
 
-        enc1 = [Padding(3, 'reflection'),
-                CNR2d(self.nch_in, 1 * self.nch_ker, kernel_size=7, stride=1, padding=0, norm=[], relu=0.0)]
-        self.enc1 = nn.Sequential(*enc1)
+        self.enc1 = CNR2d(self.nch_in,      1 * self.nch_ker, kernel_size=7, stride=1, padding=3, norm=self.norm, relu=0.0)
 
-        self.enc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)
+        self.enc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0)
 
-        self.enc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=3, stride=2, padding=1, norm=self.norm, relu=0.0)
+        self.enc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0)
 
-        self. res1 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
+        if self.nblk:
+            res = []
 
-        self. res2 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
+            for i in range(self.nblk):
+                res += [ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3, stride=1, padding=1, norm=self.norm, relu=0.0, padding_mode='reflection')]
 
-        self. res3 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
+            self.res = nn.Sequential(*res)
 
-        self. res4 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
+        self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0)
 
-        self. res5 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
+        self.dec2 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.0)
 
-        self. res6 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
-
-        self. res7 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
-
-        self. res8 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
-
-        self. res9 = ResBlock(4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3,
-                              stride=1, norm=self.norm, padding=1, padding_mode='reflection', relu=0.0, drop=0.0)
-
-        self.dec3 = DECNR2d(4 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)
-
-        self.dec2 = DECNR2d(2 * self.nch_ker, 1 * self.nch_ker, kernel_size=3, stride=2, padding=1, output_padding=1, norm=self.norm, relu=0.0)
-
-        dec1 = [Padding(3, 'reflection'),
-                Conv2d(1 * self.nch_ker, self.nch_out, kernel_size=7, stride=1, padding=0)]
-        self.dec1 = nn.Sequential(*dec1)
+        self.dec1 = CNR2d(1 * self.nch_ker, self.nch_out, kernel_size=7, stride=1, padding=3, norm=[], relu=[], bias=False)
 
     def forward(self, x):
         x = self.enc1(x)
         x = self.enc2(x)
         x = self.enc3(x)
 
-        x = self.res1(x)
-        x = self.res2(x)
-        x = self.res3(x)
-        x = self.res4(x)
-        x = self.res5(x)
-        x = self.res6(x)
-        x = self.res7(x)
-        x = self.res8(x)
-        x = self.res8(x)
+        if self.nblk:
+            x = self.res(x)
 
         x = self.dec3(x)
         x = self.dec2(x)
@@ -191,11 +161,23 @@ class Discriminator(nn.Module):
         else:
             self.bias = True
 
-        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[],        relu=0.2, drop=[], bias=False)
-        self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
-        self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
-        self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2, drop=[])
-        self.dsc5 = Conv2d(8 * self.nch_ker, 1,               kernel_size=4, stride=1, padding=0, bias=False)
+        # dsc1 : 256 x 256 x 3 -> 128 x 128 x 64
+        # dsc2 : 128 x 128 x 64 -> 64 x 64 x 128
+        # dsc3 : 64 x 64 x 128 -> 32 x 32 x 256
+        # dsc4 : 32 x 32 x 256 -> 32 x 32 x 512
+        # dsc5 : 32 x 32 x 512 -> 32 x 32 x 1
+
+        self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2)
+        self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2)
+        self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2)
+        self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=self.norm, relu=0.2)
+        self.dsc5 = CNR2d(8 * self.nch_ker, 1,                kernel_size=4, stride=1, padding=1, norm=[],        relu=[], bias=False)
+
+        # self.dsc1 = CNR2d(1 * self.nch_in,  1 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[], relu=0.2)
+        # self.dsc2 = CNR2d(1 * self.nch_ker, 2 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[], relu=0.2)
+        # self.dsc3 = CNR2d(2 * self.nch_ker, 4 * self.nch_ker, kernel_size=4, stride=2, padding=1, norm=[], relu=0.2)
+        # self.dsc4 = CNR2d(4 * self.nch_ker, 8 * self.nch_ker, kernel_size=4, stride=1, padding=1, norm=[], relu=0.2)
+        # self.dsc5 = CNR2d(8 * self.nch_ker, 1,                kernel_size=4, stride=1, padding=1, norm=[], relu=[], bias=False)
 
     def forward(self, x):
 
