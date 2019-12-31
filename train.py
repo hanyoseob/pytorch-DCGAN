@@ -8,6 +8,7 @@ from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
+from statistics import mean
 
 
 class Train:
@@ -193,9 +194,9 @@ class Train:
             netG.train()
             netD.train()
 
-            gen_loss_train = 0
-            disc_loss_real_train = 0
-            disc_loss_fake_train = 0
+            loss_G_train = []
+            loss_D_real_train = []
+            loss_D_fake_train = []
 
             for i, data in enumerate(loader_train, 1):
                 def should(freq):
@@ -233,14 +234,14 @@ class Train:
                 optimG.step()
 
                 # get losses
-                gen_loss_train += gen_loss.item()
-                disc_loss_fake_train += disc_loss_fake.item()
-                disc_loss_real_train += disc_loss_real.item()
+                loss_G_train += [gen_loss.item()]
+                loss_D_fake_train += [disc_loss_fake.item()]
+                loss_D_real_train += [disc_loss_real.item()]
 
                 print('TRAIN: EPOCH %d: BATCH %04d/%04d: '
                       'GEN GAN: %.4f DISC FAKE: %.4f DISC REAL: %.4f' %
                       (epoch, i, num_batch_train,
-                       gen_loss_train / i, disc_loss_fake_train / i, disc_loss_real_train / i))
+                       mean(loss_G_train), mean(loss_D_fake_train), mean(loss_D_real_train)))
 
                 if should(num_freq_disp):
                     ## show output
@@ -250,9 +251,9 @@ class Train:
                     writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
                     writer_train.add_images('label', label, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
 
-            writer_train.add_scalar('gen_loss', gen_loss_train / num_batch_train, epoch)
-            writer_train.add_scalar('disc_loss_fake', disc_loss_fake_train / num_batch_train, epoch)
-            writer_train.add_scalar('disc_loss_real', disc_loss_real_train / num_batch_train, epoch)
+            writer_train.add_scalar('loss_G', mean(loss_G_train), epoch)
+            writer_train.add_scalar('loss_D_fake', mean(loss_D_fake_train), epoch)
+            writer_train.add_scalar('loss_D_real', mean(loss_D_real_train), epoch)
 
             # update schduler
             # schedG.step()
