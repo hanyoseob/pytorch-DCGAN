@@ -202,8 +202,8 @@ class Train:
                 def should(freq):
                     return freq > 0 and (i % freq == 0 or i == num_batch_train)
 
-                input = torch.randn(batch_size, nch_in, ny_in, nx_in).to(device)
                 label = data.to(device)
+                input = torch.randn(label.size(0), nch_in, ny_in, nx_in).to(device)
 
                 # forward netG
                 output = netG(input)
