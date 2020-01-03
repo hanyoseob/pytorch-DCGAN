@@ -166,7 +166,7 @@ class Train:
         init_net(netD, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
 
         ## setup loss & optimization
-        fn_GAN = nn.BCELoss().to(device)
+        fn_GAN = nn.BCEWithLogitsLoss().to(device)
 
         paramsG = netG.parameters()
         paramsD = netD.parameters()
