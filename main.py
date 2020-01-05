@@ -18,8 +18,8 @@ parser.add_argument('--gpu_ids', default='0', dest='gpu_ids')
 parser.add_argument('--mode', default='test', choices=['train', 'test'], dest='mode')
 parser.add_argument('--train_continue', default='off', choices=['on', 'off'], dest='train_continue')
 
-parser.add_argument('--scope', default='dcgan_bnorm', dest='scope')
-parser.add_argument('--norm', type=str, default='bnorm', dest='norm')
+parser.add_argument('--scope', default='dcgan', dest='scope')
+parser.add_argument('--norm', type=str, default='inorm', dest='norm')
 
 parser.add_argument('--name_data', type=str, default='celeba', dest='name_data')
 
