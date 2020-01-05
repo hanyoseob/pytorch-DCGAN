@@ -25,7 +25,7 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
 
 
 ## Tensorboard
-    $ tensorboard --logdir log/[scope] --port [(optinal) 4 digit port number]
+    $ tensorboard --logdir log/[scope] --port [(optional) 4 digit port number]
 
 Then, click **http://localhost:6006**
 
