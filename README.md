@@ -13,7 +13,7 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
 ## Train
     $ python main.py --mode train --scope [scope name]
 
-* Set [scope name] uniquely.
+* Set **[scope name]** uniquely.
 
 
 ## Test
@@ -29,5 +29,5 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
 
 Then, click **http://localhost:6006**
 
-* You can change **[4 digit port number]**
+* You can change **[(optional) 4 digit port number]**
 * 4 digit port number = 6006 (default)
