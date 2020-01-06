@@ -7,14 +7,14 @@
 In recent years, supervised learning with convolutional networks (CNNs) has seen huge adoption in computer vision applications. Comparatively, unsupervised learning with CNNs has received less attention. In this work we hope to help bridge the gap between the success of CNNs for supervised learning and unsupervised learning. We introduce a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate that they are a strong candidate for unsupervised learning. Training on various image datasets, we show convincing evidence that our deep convolutional adversarial pair learns a hierarchy of representations from object parts to scenes in both the generator and discriminator. Additionally, we use the learned features for novel tasks - demonstrating their applicability as general image representations.
         
 ## Train
-    $ python main.py --mode train --scope [scope name] --dir_data [data directory] --name_data [data name]
+    $ python main.py --mode train --scope [scope name] --dir_data [data directory] --name_data [data name] --dir_log [log directory]
 
 * Set **[scope name]** uniquely.
-* To understand hierarchy of directories based on their arguments, see **directory structure** below. 
+* To understand hierarchy of directories based on their arguments, see **directories structure** below. 
 
 
 ## Test
-    $ python main.py --mode test --scope [scope name] --dir_data [data directory] --name_data [data name] --dir_result [result directory]
+    $ python main.py --mode test --scope [scope name] --dir_data [data directory] --name_data [data name] --dir_log [log directory] --dir_result [result directory]
 
 * To test using trained network, set **[scope name]** defined in the **train** phase.
 * Generated images are saved in the **images** subfolder along with **[result directory]** folder.
@@ -27,7 +27,7 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
 After the above comment executes, go **http://localhost:6006**
 
 * You can change **[(optional) 4 digit port number]**.
-* Default 4 digit port number is 6006.
+* Default 4 digit port number is **6006**.
 
 
 ## Results
