@@ -25,7 +25,6 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
 * Hyperparameters were written to **arg.txt** under the **[log directory]**.
 * To understand hierarchy of directories based on their arguments, see **directories structure** below. 
 
-
 ## Test
     $ python main.py --mode test \
                      --scope [scope name] \
