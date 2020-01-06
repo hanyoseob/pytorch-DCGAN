@@ -104,9 +104,9 @@ After the above comment executes, go **http://localhost:6006**
     |           \---model_epoch0010.pth
     +---datasets
     |   \---celeba
-    |       +---000001.png
+    |       +---000001.jpg
     |       |   ...
-    |       \---202599.png
+    |       \---202599.jpg
     +---log
     |   \---dcgan
     |       \---celeba
