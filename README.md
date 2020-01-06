@@ -7,14 +7,40 @@
 In recent years, supervised learning with convolutional networks (CNNs) has seen huge adoption in computer vision applications. Comparatively, unsupervised learning with CNNs has received less attention. In this work we hope to help bridge the gap between the success of CNNs for supervised learning and unsupervised learning. We introduce a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate that they are a strong candidate for unsupervised learning. Training on various image datasets, we show convincing evidence that our deep convolutional adversarial pair learns a hierarchy of representations from object parts to scenes in both the generator and discriminator. Additionally, we use the learned features for novel tasks - demonstrating their applicability as general image representations.
         
 ## Train
-    $ python main.py --mode train --scope [scope name] --dir_data [data directory] --name_data [data name] --dir_log [log directory]
+    $ python main.py --mode train \
+                     --scope [scope name] \
+                     --name_data [data name] \
+                     --dir_data [data directory] \
+                     --dir_log [log directory] \
+                     --dir_checkpoint [checkpoint directory]
+---
+    $ python main.py --mode train \
+                     --scope dcgan \
+                     --name_data celeba \
+                     --dir_data ./datasets \
+                     --dir_log ./log \
+                     --dir_checkpoint ./checkpoint
 
 * Set **[scope name]** uniquely.
 * To understand hierarchy of directories based on their arguments, see **directories structure** below. 
 
 
 ## Test
-    $ python main.py --mode test --scope [scope name] --dir_data [data directory] --name_data [data name] --dir_log [log directory] --dir_result [result directory]
+    $ python main.py --mode test \
+                     --scope [scope name] \
+                     --name_data [data name] \
+                     --dir_data [data directory] \
+                     --dir_log [log directory] \
+                     --dir_checkpoint [checkpoint directory] \
+                     --dir_result [result directory]
+---
+    $ python main.py --mode test \
+                     --scope dcgan \
+                     --name_data celeba \
+                     --dir_data ./datasets \
+                     --dir_log ./log \
+                     --dir_checkpoint ./checkpoints \
+                     --dir_result ./results
 
 * To test using trained network, set **[scope name]** defined in the **train** phase.
 * Generated images are saved in the **images** subfolder along with **[result directory]** folder.
@@ -22,8 +48,12 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
 
 
 ## Tensorboard
-    $ tensorboard --logdir [log directory]/[scope name]/[data name] --port [(optional) 4 digit port number]
-
+    $ tensorboard --logdir [log directory]/[scope name]/[data name] \
+                  --port [(optional) 4 digit port number]
+---
+    $ tensorboard --logdir ./log/dcgan/celeba
+                  --port 6006
+                  
 After the above comment executes, go **http://localhost:6006**
 
 * You can change **[(optional) 4 digit port number]**.
@@ -62,9 +92,7 @@ After the above comment executes, go **http://localhost:6006**
                 |   +---12345-output.png
                 \---index.html
 
-
-* Above directory is created by setting arguments when **main.py** is executed.
-
+---
 
     pytorch-DCGAN
     +---checkpoints
@@ -91,7 +119,6 @@ After the above comment executes, go **http://localhost:6006**
                 |   |   ...
                 |   +---12345-output.png
                 \---index.html
-                
-* It is a directory structure based on default arguments setting.
-
+ 
+* Above directory is created by setting arguments when **main.py** is executed.               
         
