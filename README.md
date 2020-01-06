@@ -70,12 +70,12 @@ After the above comment executes, go **http://localhost:6006**
     +---[dir_checkpoint]
     |   \---[scope]
     |       \---[name_data]
-    |           +---model_epoch0001.pth
+    |           +---model_epoch00000.pth
     |           |   ...
-    |           \---model_epoch0010.pth
+    |           \---model_epoch12345.pth
     +---[dir_data]
     |   \---[name_data]
-    |       +---000001.jpg
+    |       +---000000.jpg
     |       |   ...
     |       \---12345.png
     +---[dir_log]
@@ -98,7 +98,7 @@ After the above comment executes, go **http://localhost:6006**
     +---checkpoints
     |   \---dcgan
     |       \---celeba
-    |           +---model_epoch0001.pth
+    |           +---model_epoch00001.pth
     |           |   ...
     |           \---model_epoch0010.pth
     +---datasets
@@ -115,9 +115,9 @@ After the above comment executes, go **http://localhost:6006**
         \---dcgan
             \---celeba
                 +---images
-                |   +---00000-output.png
+                |   +---0000-output.png
                 |   |   ...
-                |   +---12345-output.png
+                |   +---0127-output.png
                 \---index.html
  
 * Above directory is created by setting arguments when **main.py** is executed.               
