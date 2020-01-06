@@ -23,7 +23,7 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
 
 * Set **[scope name]** uniquely.
 * To understand hierarchy of directories based on their arguments, see **directories structure** below. 
-* Hyperparameters were written to **arg.txt** under the log directory.
+* Hyperparameters were written to **arg.txt** under the **[log directory]**.
 
 
 ## Test
@@ -52,7 +52,7 @@ In recent years, supervised learning with convolutional networks (CNNs) has seen
     $ tensorboard --logdir [log directory]/[scope name]/[data name] \
                   --port [(optional) 4 digit port number]
 ---
-    $ tensorboard --logdir ./log/dcgan/celeba
+    $ tensorboard --logdir ./log/dcgan/celeba \
                   --port 6006
                   
 After the above comment executes, go **http://localhost:6006**
